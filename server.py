@@ -1,8 +1,7 @@
 from pathlib import Path
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
-mcp = FastMCP("pc-files")
-
+mcp = MCPServer("pc-files")
 ROOT = Path(r"D:\TestThyChambers").resolve() 
 
 def safe_path(p: str) -> Path:
