@@ -1,0 +1,17 @@
+2026-10-16 22:04:52,490 INFO mcp-file-server: Workspace root: D:\TestThyChambers
+2026-10-16 22:04:52,491 INFO mcp-file-server: Serving MCP on http://127.0.0.1:8000/mcp (allowed tunnel hosts: none)
+2026-10-16 22:04:52,578 INFO mcp.server.streamable_http_manager: StreamableHTTP session manager started
+2026-10-16 22:05:11,878 INFO mcp.server.streamable_http_manager: StreamableHTTP session manager shutting down
+2026-10-16 22:10:18,913 INFO mcp-file-server: Workspace root: D:\TestThyChambers
+2026-10-16 22:10:18,915 INFO mcp-file-server: Serving MCP on http://127.0.0.1:8000/mcp (allowed tunnel hosts: ['ngrok http 80'])
+2026-10-16 22:10:19,035 INFO mcp.server.streamable_http_manager: StreamableHTTP session manager started
+2026-10-16 22:12:01,837 INFO mcp.server.streamable_http_manager: StreamableHTTP session manager shutting down
+2026-10-16 22:12:58,917 INFO mcp-file-server: Workspace root: D:\TestThyChambers
+2026-10-16 22:12:58,918 INFO mcp-file-server: Serving MCP on http://127.0.0.1:8000/mcp (allowed tunnel hosts: ['coastland-deferred-trowel.ngrok-free.dev'])
+2026-10-16 22:12:59,033 INFO mcp.server.streamable_http_manager: StreamableHTTP session manager started
+2026-10-16 22:18:14,672 INFO mcp.server.streamable_http_manager: StreamableHTTP session manager shutting down
+2026-10-16 22:18:18,711 INFO mcp-file-server: Workspace root: D:\TestThyChambers
+2026-10-16 22:18:18,712 INFO mcp-file-server: Serving MCP on http://127.0.0.1:8000/mcp (allowed tunnel hosts: ['coastland-deferred-trowel.ngrok-free.dev'])
+2026-10-16 22:18:18,798 INFO mcp.server.streamable_http_manager: StreamableHTTP session manager started
+2026-10-16 22:20:38,958 INFO mcp.server.streamable_http: Terminating session: None
+2026-10-16 22:22:38,997 INFO mcp.server.streamable_http: Terminating session: None
