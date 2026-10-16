@@ -83,15 +83,13 @@ put an HTTPS tunnel or reverse proxy in front of the local listener.
    ngrok config add-authtoken YOUR_NGROK_AUTHTOKEN
    ```
 
-2. Reserve a static domain in ngrok. Copy
-   `deployment\ngrok.yml.example` to `deployment\ngrok.yml`, and replace the
-   example domain with your reserved domain.
+2. Reserve a static domain in ngrok.
 3. Set `MCP_ALLOWED_HOSTS` in `.env` to that hostname alone, for example
    `mcp-yourname.ngrok-free.app`. Restart the MCP server after changing `.env`.
 4. Start the tunnel in another terminal:
 
    ```powershell
-   ngrok start --config deployment\ngrok.yml pc-files
+   ngrok http --url=YOUR-RESERVED-DOMAIN.ngrok-free.app 8000
    ```
 
 5. The remote MCP endpoint is `https://YOUR-RESERVED-DOMAIN/mcp`.
@@ -115,23 +113,6 @@ The URL-secret option is weaker: the secret is part of the URL and may be
 recorded by client, proxy, or tunnel infrastructure. Use HTTPS, disable request
 URL logging where possible, and rotate the secret if it is exposed. Never paste
 the literal secrets into documentation, screenshots, or transcripts.
-
-## Windows startup/restart configuration
-
-`deployment\Register-McpStartupTasks.ps1` registers Task Scheduler tasks for the
-server and ngrok. Configure `.env` and `deployment\ngrok.yml` first, then run
-PowerShell as Administrator:
-
-```powershell
-Set-ExecutionPolicy -Scope Process Bypass
-.\deployment\Register-McpStartupTasks.ps1
-```
-
-The tasks start at boot and are configured to retry on failure. Inspect them in
-Task Scheduler (`MCP File Server` and `MCP ngrok Tunnel`), and verify the tunnel
-domain and local endpoint after a reboot before relying on the service. The
-script does not prove restart recovery on your machine; record a verified test
-in `MCP_ROOT\work\CHECKPOINTS`.
 
 ## Tools and safety behavior
 
