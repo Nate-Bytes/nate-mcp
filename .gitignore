@@ -4,3 +4,4 @@ __pycache__/
 .pytest_cache/
 mcp-server.log
 workspace/
+mcp-server.log
