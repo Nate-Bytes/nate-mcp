@@ -1,0 +1,7 @@
+version: "3"
+
+tunnels:
+  pc-files:
+    proto: http
+    addr: 8000
+    domain: your-reserved-domain.ngrok-free.app

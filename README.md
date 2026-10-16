@@ -1,106 +1,204 @@
 # MCP File Server
 
-This project runs a sandboxed file-workspace MCP server for local or tunneled access. It lets an MCP client read, write, search, and inspect files inside a controlled workspace root while blocking unsafe paths and file types.
+A Python MCP server that exposes a sandboxed workspace over stdio or Streamable
+HTTP. Its 14 tools list, read, search, write, and delete files; read PDFs and
+images; inspect Git; and maintain four handoff files.
 
-## Requirements
+## Requirements and installation
 
+- Windows 10/11 or another OS supported by Python and the MCP SDK
 - Python 3.11+
-- `mcp` package
-- `pypdf` package
+- Git for the read-only Git tools
+- ngrok only if you need remote HTTPS access
 
-Install the dependencies:
+From the repository directory, create a virtual environment and install pinned
+dependencies:
 
-```bash
-python -m pip install mcp pypdf
+```powershell
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
-If you use a virtual environment, activate it first.
+Copy the example configuration and edit it:
 
-## Configuration
-
-Copy the example environment file:
-
-```bash
-copy .env.example .env
+```powershell
+Copy-Item .env.example .env
+notepad .env
 ```
 
-Then edit `.env` and set the values you need. The most important settings are:
+`MCP_ROOT` is the only required setting for choosing the workspace. If omitted,
+the server uses a `workspace` folder beside `server.py`. Create the folder if
+needed. Values in the process environment take precedence over `.env`.
 
-- `MCP_ROOT`: the writable workspace root the server is allowed to access.
-- `MCP_TOKEN`: bearer token required for HTTP mode; must be at least 32 characters.
-- `MCP_URL_SECRET`: optional secret for path-based auth in `/s/<secret>/mcp` style URLs.
-- `MCP_HOST`: interface for HTTP mode (default `127.0.0.1`).
-- `MCP_PORT`: port for HTTP mode (default `8000`).
-- `MCP_ALLOWED_HOSTS`: comma-separated public hostnames when exposing the server behind a tunnel.
+| Setting | Purpose |
+| --- | --- |
+| `MCP_ROOT` | Workspace folder the server may access. Use an absolute path for a service. |
+| `MCP_TOKEN` | Required HTTP bearer token, at least 32 characters. |
+| `MCP_URL_SECRET` | Optional 32+ character URL credential for clients that cannot send headers. |
+| `MCP_HOST` | HTTP bind address; defaults to `127.0.0.1`. |
+| `MCP_PORT` | HTTP port; defaults to `8000`. |
+| `MCP_ALLOWED_HOSTS` | Comma-separated tunnel hostnames, without scheme or path. |
 
-Example:
+Generate distinct strong secrets in PowerShell; run the command separately for
+each configured secret:
 
-```env
-MCP_ROOT=D:\TestThyChambers
-MCP_TOKEN=abcdefghijklmnopqrstuvwxyz1234567890abcd
-MCP_URL_SECRET=zyxwvutsrqponmlkjihgfedcba987654
-MCP_HOST=127.0.0.1
-MCP_PORT=8000
-MCP_ALLOWED_HOSTS=my-name.ngrok-free.dev
+```powershell
+python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
 
-## Run in stdio mode
+Do not commit or share `.env`. The committed `.env.example` contains placeholders
+only.
 
-This is the default mode for Claude Desktop or MCP Inspector:
+## Run locally over stdio
 
-```bash
+Run from the repository directory:
+
+```powershell
 python server.py
 ```
 
-The server listens over stdin/stdout and does not require the HTTP token.
+This is the appropriate transport when an MCP client launches the server as a
+local process. The process reads/writes the MCP protocol on standard input and
+output; diagnostic logs go to stderr and `mcp-server.log`.
 
-## Run in HTTP mode
+## Run over Streamable HTTP
 
-For an HTTP tunnel or remote client:
+Ensure `.env` has a strong `MCP_TOKEN`, then start the server:
 
-```bash
+```powershell
 python server.py http
 ```
 
-Then connect to:
+It listens on `http://127.0.0.1:8000/mcp` by default. The HTTP endpoint accepts
+`Authorization: Bearer <MCP_TOKEN>`. Do not bind to a public interface directly;
+put an HTTPS tunnel or reverse proxy in front of the local listener.
 
-```text
-http://127.0.0.1:8000/mcp
+### ngrok with a reserved static domain
+
+1. Install ngrok and authenticate its CLI using your ngrok account:
+
+   ```powershell
+   ngrok config add-authtoken YOUR_NGROK_AUTHTOKEN
+   ```
+
+2. Reserve a static domain in ngrok. Copy
+   `deployment\ngrok.yml.example` to `deployment\ngrok.yml`, and replace the
+   example domain with your reserved domain.
+3. Set `MCP_ALLOWED_HOSTS` in `.env` to that hostname alone, for example
+   `mcp-yourname.ngrok-free.app`. Restart the MCP server after changing `.env`.
+4. Start the tunnel in another terminal:
+
+   ```powershell
+   ngrok start --config deployment\ngrok.yml pc-files
+   ```
+
+5. The remote MCP endpoint is `https://YOUR-RESERVED-DOMAIN/mcp`.
+
+For a temporary ngrok domain, run `ngrok http 8000`, then put the assigned
+hostname in `MCP_ALLOWED_HOSTS` and restart the server. Temporary domains can
+change between runs.
+
+### Connect Claude
+
+In Claude, add a custom connector for a remote MCP server and use the HTTPS
+endpoint above. Select **Streamable HTTP**. This server does not implement
+OAuth:
+
+- If Claude lets you configure an authorization header, choose **No sign-in**
+  (API-key authentication) and configure `Authorization: Bearer <MCP_TOKEN>`.
+- If Claude cannot send a custom header, set a separate `MCP_URL_SECRET` and use
+  `https://YOUR-RESERVED-DOMAIN/s/YOUR_MCP_URL_SECRET/mcp`. Select **No sign-in**.
+
+The URL-secret option is weaker: the secret is part of the URL and may be
+recorded by client, proxy, or tunnel infrastructure. Use HTTPS, disable request
+URL logging where possible, and rotate the secret if it is exposed. Never paste
+the literal secrets into documentation, screenshots, or transcripts.
+
+## Windows startup/restart configuration
+
+`deployment\Register-McpStartupTasks.ps1` registers Task Scheduler tasks for the
+server and ngrok. Configure `.env` and `deployment\ngrok.yml` first, then run
+PowerShell as Administrator:
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\deployment\Register-McpStartupTasks.ps1
 ```
 
-If you configured `MCP_TOKEN`, include it as a bearer token in the `Authorization` header:
+The tasks start at boot and are configured to retry on failure. Inspect them in
+Task Scheduler (`MCP File Server` and `MCP ngrok Tunnel`), and verify the tunnel
+domain and local endpoint after a reboot before relying on the service. The
+script does not prove restart recovery on your machine; record a verified test
+in `MCP_ROOT\work\CHECKPOINTS`.
 
-```http
-Authorization: Bearer <your-token>
+## Tools and safety behavior
+
+The server currently exposes these tools; retain these names in clients:
+
+`list_directory`, `read_file`, `read_image`, `read_pdf`, `write_file`,
+`str_replace`, `delete_file`, `search_files`, `git_status`, `git_diff`,
+`git_log`, `handoff_read`, `handoff_append`, `handoff_update_state`.
+
+- Paths are resolved against `MCP_ROOT`; traversal, absolute paths outside the
+  root, and symlinks escaping the root are rejected.
+- File reads and writes use an explicit text-extension allowlist. Images and
+  PDFs have their own bounded read tools.
+- Direct reads of `.git` and `.env` are blocked; `.git` writes and all writes to
+  the four handoff files in `work\` are blocked.
+- Replacing a file requires `overwrite=true` and the current `if_version` from
+  `read_file`. `str_replace` also requires that version. Deletion requires both
+  `confirm=true` and that version. `handoff_read` returns a version for
+  `handoff_update_state`; stale versions are rejected.
+- Each MCP tool call is logged with a UTC timestamp, tool name, and redacted
+  argument summary. File content, tokens, and secret values are not logged.
+- URL-secret authentication remains less safe than bearer headers because the
+  credential is present in the request path.
+
+## Persistent handoff across conversations
+
+The server creates and maintains the same four plain-text files under
+`<MCP_ROOT>\work\`. Their filenames have **no extension**:
+
+- `work\PROJECT_STATE`
+- `work\PLAN_LOG`
+- `work\CHECKPOINTS`
+- `work\DECISIONS`
+
+These are workspace files shared by conversations connected to the same
+`MCP_ROOT`; they are not per-session notes and are protected from deletion or
+ordinary writes through the file tools.
+
+At the beginning of **every** conversation, call `handoff_read` to read all four
+files. Before stopping, call `handoff_update_state` with:
+
+1. completed work,
+2. verification actually performed,
+3. unresolved items (use `None` if there are none), and
+4. one concrete next action.
+
+Use the `PROJECT_STATE` version returned by `handoff_read`; if another
+conversation updated it, the stale update is rejected. Record a plan before
+acting and progress in `PLAN_LOG` with `handoff_append`; log decisions in
+`DECISIONS` and verified milestones in `CHECKPOINTS`. These files remain
+ordinary readable text on disk and can also be inspected directly in the
+workspace folder.
+
+## Tests and verification
+
+Run the full test suite:
+
+```powershell
+python -m pytest -q
 ```
 
-If you configured `MCP_URL_SECRET`, some clients can use a path-based shortcut instead:
+The tests cover path traversal, null bytes, Windows/UNC paths, symlink escapes,
+protected files, extension allowlisting, destructive confirmation and version
+checks, bearer-token responses, and an official Python MCP SDK client making a
+Streamable HTTP connection.
 
-```text
-http://127.0.0.1:8000/s/<secret>/mcp
-```
-
-## Safety model
-
-The server enforces a workspace root and refuses paths that resolve outside that root. It blocks executable extensions and denies writes to:
-
-- the workspace root itself
-- handoff files
-- `.git` content
-- blocked executable file types
-
-Use `handoff_read`, `handoff_append`, and `handoff_update_state` to keep session state and notes in the approved handoff files.
-
-## Common tools
-
-This server exposes MCP tools for:
-
-- listing and reading files
-- reading images and PDFs
-- writing and replacing file content
-- deleting files with confirmation
-- searching files by name and content
-- git status and diff
-- session handoff tracking
-
-For full behavior, inspect the tool definitions in `server.py`.
+For MCP Inspector, run `python server.py` for local stdio or `python server.py
+http` behind HTTPS. Verify a valid file read and a rejected traversal/read of
+`.env`. Automated tests do not simulate a signed-in Claude connector session or
+a conversation resumed in a separate session; verify those in your client.

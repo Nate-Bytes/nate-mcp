@@ -56,13 +56,13 @@ def test_trailing_dots_and_spaces_do_not_escape(sandbox: Path, path: str) -> Non
     assert result.is_relative_to(sandbox)
 
 
-def test_symlink_to_outside_root_is_rejected(sandbox: Path, tmp_path: Path) -> None:
+def test_symlink_to_outside_root_is_rejected(
+    sandbox: Path, tmp_path: Path, create_directory_link
+) -> None:
     outside = tmp_path / "outside"
     outside.mkdir()
     link = sandbox / "outside-link"
-    try:
-        link.symlink_to(outside, target_is_directory=True)
-    except OSError as exc:
-        pytest.skip(f"Creating a directory symlink is unavailable: {exc}")
+    if not create_directory_link(link, outside):
+        pytest.skip("Creating a directory link is unavailable.")
     with pytest.raises(ValueError, match="not allowed"):
         server.safe_path("outside-link")
